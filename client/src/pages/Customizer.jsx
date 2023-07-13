@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { useSnapshot } from 'valtio'
+import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useSnapshot } from 'valtio';
 
-import config from '../config/config'
-import state from '../store'
-import { download, stylishShirt } from '../assets'
-import { downloadCanvasToImage, reader } from '../config/helpers'
-import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants'
-import { fadeAnimation, slideAnimation } from '../config/motion'
-import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components'
+import config from '../config/config';
+import state from '../store';
+import { download } from '../assets';
+import { downloadCanvasToImage, reader } from '../config/helpers';
+import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
+import { fadeAnimation, slideAnimation } from '../config/motion';
+import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
 
 const Customizer = () => {
-  const snap = useSnapshot(state)
+  const snap = useSnapshot(state);
 
-  const [file, setFile] = useState('')
+  const [file, setFile] = useState('');
 
-  const [prompt, setPrompt] = useState('')
-  const [generatingImg, setGeneratingImg] = useState(false)
+  const [prompt, setPrompt] = useState('');
+  const [generatingImg, setGeneratingImg] = useState(false);
 
-  const [activeEditorTab, setActiveEditorTab] = useState('')
+  const [activeEditorTab, setActiveEditorTab] = useState("");
   const [activeFilterTab, setActiveFilterTab] = useState({
     logoShirt: true,
     stylishShirt: false,
@@ -27,70 +27,83 @@ const Customizer = () => {
   // show tab content depending on the activeTab
   const generateTabContent = () => {
     switch (activeEditorTab) {
-      case 'colorpicker':
+      case "colorpicker":
         return <ColorPicker />
-
-      case 'filepicker':
-        return <FilePicker 
+      case "filepicker":
+        return <FilePicker
           file={file}
-          setFile={setFile} 
+          setFile={setFile}
           readFile={readFile}
-          />
-
-      case 'aipicker':
+        />
+      case "aipicker":
         return <AIPicker 
           prompt={prompt}
           setPrompt={setPrompt}
           generatingImg={generatingImg}
           handleSubmit={handleSubmit}
         />
-
       default:
-        return null
+        return null;
     }
   }
 
-  const handleSubmit = async () => {
-    if(!prompt) return alert('Please enter a prompt')
+  const handleSubmit = async (type) => {
+    if(!prompt) return alert("Please enter a prompt");
 
     try {
-      // call our backend to generate an ai image!
+      setGeneratingImg(true);
+
+      const response = await fetch('http://localhost:8080/api/v1/dalle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt,
+        })
+      })
+
+      const data = await response.json();
+
+      handleDecals(type, `data:image/png;base64,${data.photo}`)
     } catch (error) {
-      alert(error.message)
+      alert(error)
     } finally {
-      setGeneratingImg(false)
-      setActiveEditorTab('')
+      setGeneratingImg(false);
+      setActiveEditorTab("");
     }
   }
 
   const handleDecals = (type, result) => {
-    const decalType = DecalTypes[type]
+    const decalType = DecalTypes[type];
 
-    state[decalType.stateProperty] = result
+    state[decalType.stateProperty] = result;
 
-    if (!activeFilterTab[decalType.filterTab]) {
+    if(!activeFilterTab[decalType.filterTab]) {
       handleActiveFilterTab(decalType.filterTab)
     }
   }
 
   const handleActiveFilterTab = (tabName) => {
     switch (tabName) {
-      case 'logoShirt':
-        state.isLogoTexture = !activeFilterTab[tabName]
-        break
-      case 'stylishShirt':
-        state.isFullTexture = !activeFilterTab[tabName]
+      case "logoShirt":
+          state.isLogoTexture = !activeFilterTab[tabName];
+        break;
+      case "stylishShirt":
+          state.isFullTexture = !activeFilterTab[tabName];
+        break;
       default:
-        state.isLogoTexture = true
-        state.isFullTexture = false
+        state.isLogoTexture = true;
+        state.isFullTexture = false;
+        break;
     }
 
-    // adter setting the state, activeFilterTab is updated
+    // after setting the state, activeFilterTab is updated
 
     setActiveFilterTab((prevState) => {
       return {
         ...prevState,
-        [tabName]: !prevState[tabName],
+        [tabName]: !prevState[tabName]
       }
     })
   }
@@ -98,8 +111,8 @@ const Customizer = () => {
   const readFile = (type) => {
     reader(file)
       .then((result) => {
-        handleDecals(type, result)
-        setActiveEditorTab('')
+        handleDecals(type, result);
+        setActiveEditorTab("");
       })
   }
 
@@ -107,16 +120,14 @@ const Customizer = () => {
     <AnimatePresence>
       {!snap.intro && (
         <>
-
-          {/* Left Menu */}
-          <motion.div 
-            key='custom'
-            className='absolute top-0 left-0 z-10'
+          <motion.div
+            key="custom"
+            className="absolute top-0 left-0 z-10"
             {...slideAnimation('left')}
           >
-            <div className='flex items-center min-h-screen'>
-              <div className='editortabs-container tabs'>
-                {EditorTabs.map((tab, index) => (
+            <div className="flex items-center min-h-screen">
+              <div className="editortabs-container tabs">
+                {EditorTabs.map((tab) => (
                   <Tab 
                     key={tab.name}
                     tab={tab}
@@ -129,25 +140,24 @@ const Customizer = () => {
             </div>
           </motion.div>
 
-          {/* Go Back Button */}
-          <motion.div className='absolute z-10 top-5 right-5' {...fadeAnimation}>
-            <CustomButton
-              type='filled'
-              title='Go Back'
+          <motion.div
+            className="absolute z-10 top-5 right-5"
+            {...fadeAnimation}
+          >
+            <CustomButton 
+              type="filled"
+              title="Go Back"
               handleClick={() => state.intro = true}
-              customStyles='w-fit px-4 py-2.5 font-bold text-sm'
+              customStyles="w-fit px-4 py-2.5 font-bold text-sm"
             />
           </motion.div>
 
-
-          {/* Bottom Menu */}
           <motion.div
-            key='custom'
             className='filtertabs-container'
-            {...slideAnimation('up')}
+            {...slideAnimation("up")}
           >
-            {FilterTabs.map((tab, index) => (
-              <Tab 
+            {FilterTabs.map((tab) => (
+              <Tab
                 key={tab.name}
                 tab={tab}
                 isFilterTab
@@ -155,12 +165,21 @@ const Customizer = () => {
                 handleClick={() => handleActiveFilterTab(tab.name)}
               />
             ))}
+
+            {/* Download button */}
+            <button className='download-btn' onClick={downloadCanvasToImage}>
+              <img
+                src={download}
+                alt='download_image'
+                className='w-3/5 h-3/5 object-contain'
+              />
+            </button>
           </motion.div>
+          
         </>
       )}
     </AnimatePresence>
   )
-
 }
 
 export default Customizer
